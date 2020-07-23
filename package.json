@@ -1,16 +1,16 @@
 {
   "name": "rtcmulticonnection",
   "preferGlobal": false,
-  "version": "3.7.0",
+  "version": "3.7.1",
   "author": {
-    "name": "Muaz Khan",
-    "email": "muazkh@gmail.com",
-    "url": "https://muazkhan.com/"
+    "name": "Pablo Schaffner",
+    "email": "pablo@puntorigen.com",
+    "url": "https://www.puntorigen.com/"
   },
-  "description": "RTCMultiConnection is a WebRTC JavaScript wrapper library runs top over RTCPeerConnection API to support all possible peer-to-peer features.",
+  "description": "RTCMultiConnection fork modified to be used inside VueJS.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/muaz-khan/RTCMultiConnection.git"
+    "url": "https://github.com/creador/RTCMultiConnection.git"
   },
   "scripts": {
     "start": "node server.js",
@@ -65,7 +65,7 @@
     "url": "https://github.com/muaz-khan/RTCMultiConnection/issues",
     "email": "muazkh@gmail.com"
   },
-  "homepage": "https://rtcmulticonnection.herokuapp.com/demos/",
+  "homepage": "https://www.puntorigen.com",
   "tonicExampleFilename": "npm-test.js",
   "_from": "rtcmulticonnection@",
   "devDependencies": {
