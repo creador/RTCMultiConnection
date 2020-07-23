@@ -6,8 +6,8 @@
  * (c) 2014-2018 Guillermo Rauch
  * Released under the MIT License.
  */
-var socketio = require('socket.io');
-var io = socketio();
+//var io = require('socket.io-client');
+//import io from 'socket.io-client';
 
 // harkjs
 function hark(stream, options) {
@@ -154,7 +154,7 @@ function hark(stream, options) {
 // MIT License   - www.WebRTC-Experiment.com/licence
 // --------------------------------------------------
 
-var RTCMultiConnection = function(roomid, forceOptions) {
+var RTCMultiConnection = function(socketio, roomid, forceOptions) {
     var isNegotiating = false;
     var browserFakeUserAgent = 'Fake/5.0 (FakeOS) AppleWebKit/123 (KHTML, like Gecko) Fake/12.3.4567.89 Fake/123.45';
 
@@ -316,9 +316,9 @@ var RTCMultiConnection = function(roomid, forceOptions) {
         }
 
         try {
-            connection.socket = io(connection.socketURL + parameters);
+            connection.socket = socketio(connection.socketURL + parameters);
         } catch (e) {
-            connection.socket = io.connect(connection.socketURL + parameters, connection.socketOptions);
+            connection.socket = socketio.connect(connection.socketURL + parameters, connection.socketOptions);
         }
 
         var mPeer = connection.multiPeersHandler;
