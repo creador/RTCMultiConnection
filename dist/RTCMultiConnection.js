@@ -3781,7 +3781,8 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                 streaming(stream);
             }).catch(function(error) {
                 // PSB CODE
-                let new_props = { audio:connection.session.audio, video:connection.session.video };
+                //console.log('PSB hubo error',{ error:error, options:options });
+                let new_props = { audio:false, video:false };
                 // audio
                 if (typeof options.localMediaConstraints.audio === 'object') {
                     // fusion mandatory and optional keys into new_props.audio
@@ -3791,6 +3792,8 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                         for (var attrname in item) { tmp_audio[attrname] = item[attrname]; }
                     }
                     new_props.audio = tmp_audio;
+                } else {
+                    new_props.audio = options.localMediaConstraints.audio;
                 }
                 // video 
                 if (typeof options.localMediaConstraints.video === 'object') {
@@ -3831,6 +3834,8 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                         for (var attrname in item) { tmp_video[attrname] = item[attrname]; }
                     }
                     new_props.video = tmp_video;
+                } else {
+                    new_props.video = options.localMediaConstraints.video;
                 }
                 console.log('psb debug, new media constraints:',new_props);
                 //options.localMediaConstraints = { audio:connection.session.audio, video:connection.session.video };
@@ -3843,7 +3848,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                     console.log('PSB debug: hubo error en getUserMedia, usamos alt2 (eliminamos video)');
                     options.localMediaConstraints.video=false;
                     options.localMediaConstraints.audio=true;
-                    connection.session.video=false;
+                    //connection.session.video=false;
                     navigator.mediaDevices.getUserMedia(options.localMediaConstraints).then(function(stream) {
                         stream.streamid = stream.streamid || stream.id || getRandomString();
                         stream.idInstance = idInstance;
