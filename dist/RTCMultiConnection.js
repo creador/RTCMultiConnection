@@ -157,6 +157,7 @@ function hark(stream, options) {
 var RTCMultiConnection = function(socketio, roomid, forceOptions) {
     var isNegotiating = false;
     var browserFakeUserAgent = 'Fake/5.0 (FakeOS) AppleWebKit/123 (KHTML, like Gecko) Fake/12.3.4567.89 Fake/123.45';
+    var io = socketio;
 
     (function(that) {
         if (!that) {
@@ -316,9 +317,9 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
         }
 
         try {
-            connection.socket = socketio(connection.socketURL + parameters);
+            connection.socket = io(connection.socketURL + parameters);
         } catch (e) {
-            connection.socket = socketio.connect(connection.socketURL + parameters, connection.socketOptions);
+            connection.socket = io.connect(connection.socketURL + parameters, connection.socketOptions);
         }
 
         var mPeer = connection.multiPeersHandler;
@@ -1110,10 +1111,12 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
         if (typeof navigator !== 'undefined') {
             if (typeof navigator.webkitGetUserMedia !== 'undefined') {
                 navigator.getUserMedia = navigator.webkitGetUserMedia;
+                console.log('getUserMedia dice webkitGetUserMedia');
             }
 
             if (typeof navigator.mozGetUserMedia !== 'undefined') {
                 navigator.getUserMedia = navigator.mozGetUserMedia;
+                console.log('getUserMedia dice mozGetUserMedia');
             }
         } else {
             navigator = {
@@ -1131,7 +1134,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
         var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         var isChrome = !!window.chrome && !isOpera;
         var isIE = typeof document !== 'undefined' && !!document.documentMode && !isEdge;
-
+        console.log('isChrome dice: ',isChrome);
         // this one can also be used:
         // https://www.websocket.org/js/stuff.js (DetectBrowser.js)
 
@@ -1703,6 +1706,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
         var audioInputDevices = [];
         var audioOutputDevices = [];
         var videoInputDevices = [];
+        //console.log('mediaDevices dice',navigator.mediaDevices);
 
         if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
             // Firefox 38+ seems having support of enumerateDevices
@@ -1778,6 +1782,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
 
             navigator.enumerateDevices(function(devices) {
                 devices.forEach(function(_device) {
+                //console.log('enumerando equipo',_device);
                     var device = {};
                     for (var d in _device) {
                         try {
@@ -1790,7 +1795,6 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                     if (alreadyUsedDevices[device.deviceId + device.label + device.kind]) {
                         return;
                     }
-
                     // if it is MediaStreamTrack.getSources
                     if (device.kind === 'audio') {
                         device.kind = 'audioinput';
@@ -2235,7 +2239,10 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
             throw 'hark.js not found.';
         }
 
-        hark(streamEvent.stream, {
+        //console.log('psb debug: iniciando hark');
+        let speech = hark(streamEvent.stream, {});
+        /*
+
             onspeaking: function() {
                 connection.onspeaking(streamEvent);
             },
@@ -2251,6 +2258,24 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                     threshold: threshold
                 }, streamEvent));
             }
+        */
+        speech.on('speaking', function() {
+            //console.log('psb debug: hark speaking');
+            connection.onspeaking(streamEvent);
+        });
+        speech.on('stopped_speaking', function() {
+            //console.log('psb debug: hark stopped_speaking');
+            connection.onsilence(streamEvent);
+        });
+        speech.on('volume_change', function(volume, threshold) {
+            //console.log('psb debug: hark volume_change');
+            if (!connection.onvolumechange) {
+                return;
+            }
+            connection.onvolumechange(merge({
+                volume: volume,
+                threshold: threshold
+            }, streamEvent));
         });
     }
 
@@ -3656,7 +3681,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
             // callback
             options.onGettingLocalMedia(stream, returnBack);
         }
-
+        //console.log('getUserMediaHandler',{ id:idInstance, streams:currentUserMediaRequest.streams });
         if (currentUserMediaRequest.streams[idInstance]) {
             streaming(currentUserMediaRequest.streams[idInstance].stream, true);
         } else {
@@ -3674,7 +3699,10 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
             }
 
             if (typeof navigator.mediaDevices === 'undefined') {
-                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+                //navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+                // psb version
+                navigator.getUserMedia = (navigator.getUserMedia || navigator.webKitGetUserMedia || navigator.moxGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+
                 var getUserMediaSuccess = function() {};
                 var getUserMediaFailure = function() {};
 
@@ -3739,13 +3767,91 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                 return;
             }
 
+            console.log('antes de getUserMedia',{ mediaConstrains:options.localMediaConstraints, conSession:connection.session});
+            // PSB code
+            /*
+            if (DetectRTC.browser.name == 'Chrome' || DetectRTC.browser.name == 'Firefox') {
+                options.localMediaConstraints = { audio:connection.session.audio, video:connection.session.video };       
+            }*/
+            //options.localMediaConstraints debe ser {audio:true, video:false} (formato)
             navigator.mediaDevices.getUserMedia(options.localMediaConstraints).then(function(stream) {
                 stream.streamid = stream.streamid || stream.id || getRandomString();
                 stream.idInstance = idInstance;
 
                 streaming(stream);
             }).catch(function(error) {
-                options.onLocalMediaError(error, options.localMediaConstraints);
+                // PSB CODE
+                let new_props = { audio:connection.session.audio, video:connection.session.video };
+                // audio
+                if (typeof options.localMediaConstraints.audio === 'object') {
+                    // fusion mandatory and optional keys into new_props.audio
+                    let tmp_audio = options.localMediaConstraints.audio.mandatory;
+                    for (var item in options.localMediaConstraints.audio.optional) {
+                        // optional is an array of objects
+                        for (var attrname in item) { tmp_audio[attrname] = item[attrname]; }
+                    }
+                    new_props.audio = tmp_audio;
+                }
+                // video 
+                if (typeof options.localMediaConstraints.video === 'object') {
+                    // fusion mandatory and optional keys into new_props.audio
+                    let tmp_video = {};
+                    // map some keys
+                    for (var attrname in options.localMediaConstraints.video.mandatory) {
+                        //
+                        if (attrname=='minFrameRate') {
+                            if (typeof tmp_video['frameRate'] === 'object') {
+                                tmp_video['frameRate'].min = options.localMediaConstraints.video.mandatory[attrname];
+                            } else {
+                                tmp_video['frameRate'] = { min:options.localMediaConstraints.video.mandatory[attrname] };
+                            }
+                        } else if (attrname=='maxFrameRate') {
+                            if (typeof tmp_video['frameRate'] === 'object') {
+                                tmp_video['frameRate'].max = options.localMediaConstraints.video.mandatory[attrname];
+                            } else {
+                                tmp_video['frameRate'] = { max:options.localMediaConstraints.video.mandatory[attrname] };
+                            }
+                        } else if (attrname=='minAspectRatio') {
+                            tmp_video['aspectRatio'] = options.localMediaConstraints.video.mandatory[attrname];
+                        } else if (attrname=='minWidth') {
+                            tmp_video['width'] = options.localMediaConstraints.video.mandatory[attrname];
+                        } else if (attrname=='maxWidth') {
+                            tmp_video['width'] = options.localMediaConstraints.video.mandatory[attrname];
+                        } else if (attrname=='minHeight') {
+                            tmp_video['height'] = options.localMediaConstraints.video.mandatory[attrname];
+                        } else if (attrname=='maxWidth') {
+                            tmp_video['height'] = options.localMediaConstraints.video.mandatory[attrname];
+                        } else {
+                            tmp_video[attrname] = options.localMediaConstraints.video.mandatory[attrname];
+                        }
+                        //
+                    }
+                    for (var item in options.localMediaConstraints.video.optional) {
+                        // optional is an array of objects
+                        for (var attrname in item) { tmp_video[attrname] = item[attrname]; }
+                    }
+                    new_props.video = tmp_video;
+                }
+                console.log('psb debug, new media constraints:',new_props);
+                //options.localMediaConstraints = { audio:connection.session.audio, video:connection.session.video };
+                console.log('PSB debug: hubo error en getUserMedia, usamos alt1',options.localMediaConstraints);
+                navigator.mediaDevices.getUserMedia(options.localMediaConstraints).then(function(stream) {
+                    stream.streamid = stream.streamid || stream.id || getRandomString();
+                    stream.idInstance = idInstance;
+                    streaming(stream);
+                }).catch(function(error) {
+                    console.log('PSB debug: hubo error en getUserMedia, usamos alt2 (eliminamos video)');
+                    options.localMediaConstraints.video=false;
+                    options.localMediaConstraints.audio=true;
+                    connection.session.video=false;
+                    navigator.mediaDevices.getUserMedia(options.localMediaConstraints).then(function(stream) {
+                        stream.streamid = stream.streamid || stream.id || getRandomString();
+                        stream.idInstance = idInstance;
+                        streaming(stream);
+                    }).catch(function(error2) { 
+                        options.onLocalMediaError(error2, options.localMediaConstraints);
+                    });
+                });
             });
         }
     }
@@ -4240,7 +4346,10 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                 };
 
                 try {
-                    setHarkEvents(connection, connection.streamEvents[stream.streamid]);
+                    if (!DetectRTC.isMobileDevice) {
+                        console.log('no es movil, permitimos hark');
+                        setHarkEvents(connection, connection.streamEvents[stream.streamid]);
+                    }
                     setMuteHandlers(connection, connection.streamEvents[stream.streamid]);
 
                     connection.onstream(connection.streamEvents[stream.streamid]);
@@ -4446,6 +4555,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                     openRoom(callback);
                     return;
                 }
+
 
                 connection.captureUserMedia(function() {
                     openRoom(callback);
@@ -4740,6 +4850,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
             }
 
             if (session.audio || session.video || session.screen) {
+                console.log('sesion dice:',session);
                 if (session.screen) {
                     if (DetectRTC.browser.name === 'Edge') {
                         navigator.getDisplayMedia({
@@ -4783,6 +4894,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                         });
                     }
                 } else if (session.audio || session.video) {
+                    //console.log('audio/video dump:',{ forced:sessionForced, session:session });
                     connection.invokeGetUserMedia(sessionForced, callback, session);
                 }
             }
@@ -4932,6 +5044,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
             };
         }
 
+        console.log('forceOptions.useDefaultDevices dice',forceOptions.useDefaultDevices);
         if (!forceOptions.useDefaultDevices && !DetectRTC.isMobileDevice) {
             DetectRTC.load(function() {
                 var lastAudioDevice, lastVideoDevice;
@@ -5249,6 +5362,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
         };
 
         connection.invokeGetUserMedia = function(localMediaConstraints, callback, session) {
+            //console.log('localMediaConstraints decia1',localMediaConstraints);
             if (!session) {
                 session = connection.session;
             }
@@ -5257,6 +5371,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                 localMediaConstraints = connection.mediaConstraints;
             }
 
+            //console.log('localMediaConstraints decia2',localMediaConstraints);
             getUserMediaHandler({
                 onGettingLocalMedia: function(stream) {
                     var videoConstraints = localMediaConstraints.video;
