@@ -3767,7 +3767,7 @@ var RTCMultiConnection = function(socketio, roomid, forceOptions) {
                 return;
             }
 
-            console.log('antes de getUserMedia',{ mediaConstrains:options.localMediaConstraints, conSession:connection.session});
+            //console.log('antes de getUserMedia',{ mediaConstrains:options.localMediaConstraints, conSession:connection.session});
             // PSB code
             /*
             if (DetectRTC.browser.name == 'Chrome' || DetectRTC.browser.name == 'Firefox') {
